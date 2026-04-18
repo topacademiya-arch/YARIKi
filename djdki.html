@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔫 Оружейный Кликер</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+body {
+  background: #1a1a2e;
+  color: #eee;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+#game-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 10px;
+}
+header {
+  text-align: center;
+  padding: 15px;
+  background: linear-gradient(135deg, #16213e, #0f3460);
+  border-radius: 15px;
+  margin-bottom: 15px;
+  border: 2px solid #e94560;
+}
+header h1 { font-size: 1.8em; color: #e94560; text-shadow: 0 0 20px rgba(233,69,96,0.5); }
+.stats-bar {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.stat {
+  background: rgba(0,0,0,0.4);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.9em;
+}
+.stat span { color: #e94560; font-weight: bold; }
+
+.main-area {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+@media(max-width:600px) { .main-area { grid-template-columns: 1fr; } }
+
+.panel {
+  background: linear-gradient(145deg, #16213e, #1a1a3e);
+  border-radius: 15px;
+  padding: 20px;
+  border: 2px solid #0f3460;
+}
+.panel h2 {
+  text-align: center;
+  margin-bottom: 15px;
+  color: #e94560;
+  font-size: 1.2em;
+}
+
+/* Weapon Stickers */
+.weapon-display { text-align: center; }
+.weapon-sticker-container {
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 15px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sticker {
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle at 30% 30%, #ffffff, #e0e0e0);
+  border: 4px solid #fff;
+  border-radius: 18px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.6), inset 0 0 15px rgba(255,255,255,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-3deg);
+  transition: transform 0.2s;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+}
+.sticker::after {
+  content: '';
+  position: absolute;
+  top: 10%; left: 10%;
+  width: 30%; height: 20%;
+  background: rgba(255,255,255,0.6);
+  border-radius: 50%;
+  filter: blur(4px);
+}
+.sticker svg { width: 75%; height: 75%; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
+.sticker:hover { transform: rotate(0deg) scale(1.05); }
+.sticker:active { transform: rotate(0deg) scale(0.98); }
+.weapon-name { font-size: 1.4em; font-weight: bold; color: #ffd700; margin-bottom: 5px; }
+.weapon-level { color: #aaa; font-size: 0.9em; }
+.damage-info { color: #4ecca3; margin-top: 5px; }
+
+#click-btn {
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  border: 4px solid #e94560;
+  background: radial-gradient(circle, #e94560, #c0392b);
+  color: white;
+  font-size: 1.3em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.1s;
+  box-shadow: 0 0 30px rgba(233,69,96,0.4);
+  margin: 10px auto;
+  display: block;
+  position: relative;
+  overflow: hidden;
+}
+#click-btn:hover { box-shadow: 0 0 50px rgba(233,69,96,0.7); transform: scale(1.05); }
+#click-btn:active { transform: scale(0.92); box-shadow: 0 0 20px rgba(233,69,96,0.3); }
+#click-btn .btn-text { position: relative; z-index: 2; pointer-events: none; }
+.click-hint { color: #aaa; font-size: 0.8em; margin-top: 5px; text-align: center; }
+
+.float-dmg {
+  position: fixed; pointer-events: none; font-weight: bold; font-size: 1.5em;
+  color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.8);
+  animation: floatUp 1s ease-out forwards; z-index: 1000;
+}
+.float-dmg.crit { color: #ff4444; font-size: 2em; text-shadow: 0 0 15px rgba(255,0,0,0.8); }
+.float-dmg.right { color: #ff6b6b; text-shadow: 0 0 15px rgba(255,107,107,0.9); font-size: 1.8em; }
+.float-dmg.enemy { color: #ff3333; left: 50% !important; top: 40% !important; transform: translateX(-50%) !important; }
+@keyframes floatUp {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-120px) scale(0.5); }
+}
+
+.progress-section { margin-top: 10px; }
+.progress-label { font-size: 0.85em; color: #aaa; margin-bottom: 4px; }
+.progress-bar-bg {
+  width: 100%; height: 22px; background: #0a0a1a; border-radius: 11px;
+  overflow: hidden; border: 1px solid #333;
+}
+.progress-bar-fill {
+  height: 100%; background: linear-gradient(90deg, #e94560, #ffd700);
+  border-radius: 11px; transition: width 0.3s; display: flex;
+  align-items: center; justify-content: center; font-size: 0.75em;
+  font-weight: bold; color: #000;
+}
+
+.upgrades-list { display: flex; flex-direction: column; gap: 8px; }
+.upgrade-btn {
+  background: linear-gradient(135deg, #16213e, #0f3460);
+  border: 2px solid #0f3460; border-radius: 10px; padding: 12px;
+  color: #eee; cursor: pointer; transition: all 0.2s; text-align: left; font-size: 0.9em;
+}
+.upgrade-btn:hover:not(:disabled) { border-color: #e94560; background: linear-gradient(135deg, #1a1a3e, #16213e); transform: translateX(5px); }
+.upgrade-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.upgrade-btn .upg-name { color: #ffd700; font-weight: bold; }
+.upgrade-btn .upg-cost { color: #e94560; font-size: 0.85em; }
+.upgrade-btn .upg-desc { color: #aaa; font-size: 0.8em; }
+
+/* Battle Screen */
+#battle-screen {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(10,5,15,0.95); z-index: 500; justify-content: center; align-items: center; flex-direction: column;
+}
+#battle-screen.active { display: flex; }
+.battle-arena {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 90%;
+  max-width: 700px;
+  padding: 20px;
+  background: linear-gradient(145deg, #1a0a1a, #0f1a2e);
+  border-radius: 20px;
+  border: 2px solid #e94560;
+  box-shadow: 0 0 40px rgba(233,69,96,0.3);
+}
+.battle-side { text-align: center; width: 40%; }
+.battle-vs { font-size: 2.5em; color: #ffd700; text-shadow: 0 0 20px rgba(255,215,0,0.6); margin: 0 10px; }
+.hp-bar-container { width: 100%; height: 24px; background: #0a0a1a; border-radius: 12px; margin: 10px 0; overflow: hidden; border: 2px solid #333; position: relative; }
+.hp-fill { height: 100%; transition: width 0.2s; border-radius: 12px; }
+.hp-fill.player { background: linear-gradient(90deg, #4ecca3, #2ecc71); }
+.hp-fill.enemy { background: linear-gradient(90deg, #e94560, #ff0000); }
+.hp-text { position: absolute; width: 100%; text-align: center; top: 0; line-height: 24px; font-size: 0.8em; font-weight: bold; color: #fff; text-shadow: 0 1px 2px #000; }
+#battle-click-btn {
+  width: 130px; height: 130px; border-radius: 50%; border: 4px solid #ffd700;
+  background: radial-gradient(circle, #ffd700, #e94560); color: #000;
+  font-size: 1.1em; font-weight: bold; cursor: pointer; margin: 15px auto; display: block;
+  box-shadow: 0 0 30px rgba(255,215,0,0.4); transition: transform 0.1s;
+}
+#battle-click-btn:active { transform: scale(0.9); }
+#battle-click-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+.damage-flash {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: radial-gradient(circle, rgba(255,0,0,0.4), transparent 70%);
+  pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 550;
+}
+.damage-flash.active { opacity: 1; }
+
+/* Victory/Defeat */
+#victory-screen, #defeat-screen {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.92); z-index: 600; justify-content: center; align-items: center; flex-direction: column;
+}
+#victory-screen.active, #defeat-screen.active { display: flex; }
+.result-content { text-align: center; padding: 30px; max-width: 400px; }
+.result-content h2 { font-size: 2.2em; margin-bottom: 15px; text-shadow: 0 0 30px currentColor; }
+.result-content.victory h2 { color: #ffd700; }
+.result-content.defeat h2 { color: #e94560; }
+.result-content p { color: #aaa; font-size: 1.1em; margin: 8px 0; }
+.result-sticker { width: 120px; height: 120px; margin: 15px auto; }
+.result-sticker .sticker { width: 100%; height: 100%; transform: rotate(0deg); }
+#continue-btn, #retry-btn {
+  margin-top: 20px; padding: 14px 36px; font-size: 1.1em; border: 2px solid #e94560;
+  background: linear-gradient(135deg, #e94560, #c0392b); color: white; border-radius: 10px;
+  cursor: pointer; transition: all 0.2s;
+}
+#continue-btn:hover, #retry-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(233,69,96,0.5); }
+
+.particle { position: fixed; pointer-events: none; border-radius: 50%; animation: particleFade 0.6s ease-out forwards; z-index: 999; }
+@keyframes particleFade { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0) translateY(-50px); } }
+.shake { animation: shake 0.15s ease-out; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+.wave-badge { display: inline-block; background: #e94560; color: white; padding: 2px 10px; border-radius: 10px; font-size: 0.8em; margin-left: 8px; }
+.auto-indicator { text-align: center; color: #4ecca3; font-size: 0.85em; margin-top: 8px; }
+.weapon-path { display: flex; justify-content: center; gap: 5px; margin: 10px 0; flex-wrap: wrap; }
+.path-item { padding: 4px 10px; border-radius: 8px; font-size: 0.8em; background: #0a0a1a; border: 1px solid #333; color: #666; }
+.path-item.active { background: #e94560; color: white; border-color: #e94560; }
+.path-item.completed { background: #4ecca3; color: #000; border-color: #4ecca3; }
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <header>
+    <h1>⚔️ ОРУЖЕЙНЫЙ КЛИКЕР <span class="wave-badge" id="wave-badge">ВОЛНА 1</span></h1>
+    <div class="stats-bar">
+      <div class="stat">💰 Очки: <span id="score">0</span></div>
+      <div class="stat">⚔️ Урон: <span id="damage">1</span></div>
+      <div class="stat">🎯 Крит: <span id="crit-chance">5</span>%</div>
+      <div class="stat">🤖 Авто: <span id="auto-dps">0</span>/с</div>
+      <div class="stat">💀 Убито: <span id="kills">0</span></div>
+    </div>
+  </header>
+
+  <div class="weapon-path" id="weapon-path"></div>
+
+  <div class="main-area">
+    <div class="panel weapon-display">
+      <h2>🔫 ВАШЕ ОРУЖИЕ</h2>
+      <div class="weapon-sticker-container" id="weapon-sticker-container">
+        <div class="sticker" id="weapon-sticker"></div>
+      </div>
+      <div class="weapon-name" id="weapon-name">Нож</div>
+      <div class="weapon-level" id="weapon-level">Уровень 1</div>
+      <div class="damage-info" id="damage-info">Урон: 1</div>
+      <button id="click-btn" onmousedown="playerClick(event)" oncontextmenu="return false;">
+        <span class="btn-text">⚔️ АТАКА!</span>
+      </button>
+      <div class="click-hint">⬅️ ЛКМ: атака | ➡️ ПКМ: 💥 мощный удар (3с)</div>
+      <div class="auto-indicator" id="auto-indicator"></div>
+      <div class="progress-section">
+        <div class="progress-label" id="progress-label">До следующего оружия: 100</div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>⬆️ УЛУЧШЕНИЯ</h2>
+      <div class="upgrades-list" id="upgrades-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="damage-flash" id="damage-flash"></div>
+
+<div id="battle-screen">
+  <div class="battle-arena">
+    <div class="battle-side">
+      <div style="font-size:1.2em; color:#4ecca3; font-weight:bold; margin-bottom:5px;">👤 ИГРОК</div>
+      <div class="hp-bar-container">
+        <div class="hp-fill player" id="player-hp-fill" style="width:100%"></div>
+        <div class="hp-text" id="player-hp-text">HP: 100 / 100</div>
+      </div>
+      <div id="player-weapon-display" style="margin-top:10px;"></div>
+    </div>
+    <div class="battle-vs">⚔️</div>
+    <div class="battle-side">
+      <div style="font-size:1.2em; color:#e94560; font-weight:bold; margin-bottom:5px;" id="enemy-title">👹 ВРАГ</div>
+      <div class="hp-bar-container">
+        <div class="hp-fill enemy" id="enemy-hp-fill" style="width:100%"></div>
+        <div class="hp-text" id="enemy-hp-text">HP: 50 / 50</div>
+      </div>
+      <div id="enemy-emoji-display" style="font-size:3em; margin-top:5px;">👹</div>
+    </div>
+  </div>
+  <button id="battle-click-btn" onmousedown="battleClick(event)" oncontextmenu="return false;">⚔️ БИТЬ!</button>
+  <div class="click-hint">⬅️ ЛКМ: атака | ➡️ ПКМ: 💥 мощный удар (3с)</div>
+</div>
+
+<div id="victory-screen">
+  <div class="result-content victory">
+    <h2>🏆 ПОБЕДА!</h2>
+    <div class="result-sticker" id="victory-sticker"></div>
+    <p id="victory-text"></p>
+    <p id="victory-bonus"></p>
+    <button id="continue-btn" onclick="continueGame()">ПРОДОЛЖИТЬ ➜</button>
+  </div>
+</div>
+
+<div id="defeat-screen">
+  <div class="result-content defeat">
+    <h2>💀 ПОРАЖЕНИЕ</h2>
+    <p>Враг оказался сильнее!</p>
+    <p id="defeat-hint">Попробуйте улучшить оружие или критические удары.</p>
+    <button id="retry-btn" onclick="retryBattle()">🔄 ПОВТОРИТЬ БОЙ</button>
+  </div>
+</div>
+
+<script>
+// ===== STICKERS SVG =====
+const STICKERS = {
+  knife: `<svg viewBox="0 0 100 100"><defs><linearGradient id="b1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e0e0e0"/><stop offset="100%" stop-color="#888"/></linearGradient></defs><rect x="15" y="42" width="50" height="16" rx="2" fill="url(#b1)" stroke="#666" stroke-width="1.5"/><polygon points="65,38 82,50 65,62" fill="url(#b1)" stroke="#666" stroke-width="1.5"/><rect x="5" y="38" width="14" height="24" rx="4" fill="#8B4513" stroke="#5a2d0c" stroke-width="1.5"/><line x1="8" y1="44" x2="8" y2="56" stroke="#5a2d0c" stroke-width="2"/><line x1="12" y1="44" x2="12" y2="56" stroke="#5a2d0c" stroke-width="2"/></svg>`,
+  pistol: `<svg viewBox="0 0 100 100"><rect x="18" y="38" width="55" height="18" rx="3" fill="#444" stroke="#333" stroke-width="1.5"/><rect x="68" y="40" width="18" height="14" rx="2" fill="#555" stroke="#333" stroke-width="1"/><rect x="28" y="56" width="20" height="26" rx="4" fill="#8B4513" stroke="#5a2d0c" stroke-width="1.5"/><circle cx="22" cy="47" r="3.5" fill="#333"/><rect x="18" y="34" width="7" height="6" rx="1" fill="#555"/></svg>`,
+  assault: `<svg viewBox="0 0 100 100"><rect x="8" y="40" width="65" height="14" rx="2" fill="#444" stroke="#333" stroke-width="1.5"/><rect x="68" y="38" width="20" height="18" rx="2" fill="#555" stroke="#333" stroke-width="1"/><rect x="12" y="36" width="14" height="22" rx="2" fill="#555" stroke="#333" stroke-width="1"/><rect x="22" y="54" width="16" height="24" rx="3" fill="#6a7a3a" stroke="#4a5a2a" stroke-width="1.5"/><rect x="58" y="54" width="8" height="16" rx="1" fill="#666"/></svg>`,
+  machinegun: `<svg viewBox="0 0 100 100"><rect x="5" y="38" width="75" height="16" rx="2" fill="#444" stroke="#333" stroke-width="1.5"/><rect x="75" y="36" width="14" height="20" rx="3" fill="#555" stroke="#333" stroke-width="1.5"/><circle cx="38" cy="34" r="7" fill="#555" stroke="#333" stroke-width="1.5"/><circle cx="38" cy="34" r="2.5" fill="#333"/><rect x="18" y="54" width="18" height="28" rx="4" fill="#8B4513" stroke="#5a2d0c" stroke-width="1.5"/><rect x="62" y="54" width="12" height="20" rx="2" fill="#8B4513" stroke="#5a2d0c" stroke-width="1"/></svg>`,
+  rpg: `<svg viewBox="0 0 100 100"><rect x="8" y="42" width="65" height="16" rx="3" fill="#4a7a3a" stroke="#3a5a2a" stroke-width="1.5"/><circle cx="80" cy="50" r="9" fill="#e94560" stroke="#c0392b" stroke-width="2"/><circle cx="80" cy="50" r="3.5" fill="#ffd700"/><rect x="8" y="38" width="10" height="24" rx="3" fill="#8B4513" stroke="#5a2d0c" stroke-width="1.5"/><rect x="48" y="36" width="14" height="8" rx="1" fill="#555" stroke="#333" stroke-width="1"/></svg>`
+};
+
+const WEAPONS = [
+  { name: "Нож", sticker: STICKERS.knife, threshold: 0, baseDamage: 1, baseCrit: 5, upgrades: [
+      { name: "Заточка", desc: "+1 урон", baseCost: 10, costMult: 1.8, effect: "damage", value: 1 },
+      { name: "Острый край", desc: "+3% крит", baseCost: 25, costMult: 2, effect: "crit", value: 3 },
+      { name: "Быстрые руки", desc: "+0.5 авто/с", baseCost: 50, costMult: 2.2, effect: "auto", value: 0.5 }
+    ]},
+  { name: "Пистолет", sticker: STICKERS.pistol, threshold: 100, baseDamage: 5, baseCrit: 8, upgrades: [
+      { name: "Улучшенный патрон", desc: "+3 урон", baseCost: 50, costMult: 1.9, effect: "damage", value: 3 },
+      { name: "Оптика", desc: "+4% крит", baseCost: 120, costMult: 2.1, effect: "crit", value: 4 },
+      { name: "Быстрая перезарядка", desc: "+1.5 авто/с", baseCost: 200, costMult: 2.3, effect: "auto", value: 1.5 }
+    ]},
+  { name: "Автомат", sticker: STICKERS.assault, threshold: 500, baseDamage: 15, baseCrit: 12, upgrades: [
+      { name: "Увеличенный магазин", desc: "+8 урон", baseCost: 200, costMult: 2, effect: "damage", value: 8 },
+      { name: "Красная точка", desc: "+5% крит", baseCost: 400, costMult: 2.2, effect: "crit", value: 5 },
+      { name: "Автострельба", desc: "+4 авто/с", baseCost: 600, costMult: 2.4, effect: "auto", value: 4 }
+    ]},
+  { name: "Пулемёт", sticker: STICKERS.machinegun, threshold: 2000, baseDamage: 40, baseCrit: 15, upgrades: [
+      { name: "Тяжёлые пули", desc: "+20 урон", baseCost: 800, costMult: 2.1, effect: "damage", value: 20 },
+      { name: "Лазерный прицел", desc: "+6% крит", baseCost: 1500, costMult: 2.3, effect: "crit", value: 6 },
+      { name: "Электропривод", desc: "+12 авто/с", baseCost: 2200, costMult: 2.5, effect: "auto", value: 12 }
+    ]},
+  { name: "РПГ", sticker: STICKERS.rpg, threshold: 8000, baseDamage: 120, baseCrit: 20, upgrades: [
+      { name: "Боеголовка x2", desc: "+60 урон", baseCost: 3000, costMult: 2.2, effect: "damage", value: 60 },
+      { name: "Тепловое наведение", desc: "+10% крит", baseCost: 5000, costMult: 2.4, effect: "crit", value: 10 },
+      { name: "Автозарядка", desc: "+30 авто/с", baseCost: 7000, costMult: 2.6, effect: "auto", value: 30 }
+    ]}
+];
+
+const ENEMIES = [
+  { name: "Бандит", emoji: "🥷", hpMult: 1, reward: 1.5 },
+  { name: "Солдат", emoji: "💂", hpMult: 2, reward: 2 },
+  { name: "Танк", emoji: "🛡️", hpMult: 4, reward: 3 },
+  { name: "Вертолёт", emoji: "🚁", hpMult: 7, reward: 4 },
+  { name: "БОСС", emoji: "👹", hpMult: 12, reward: 8 }
+];
+
+let state = {
+  score: 0, totalScore: 0, weaponIndex: 0, wave: 1, kills: 0,
+  damage: 1, critChance: 5, autoDps: 0,
+  upgradeLevels: [[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],
+  inBattle: false, battleEnemy: null, battleEnemyHP: 0, battleEnemyMaxHP: 0,
+  playerHP: 0, playerMaxHP: 0, battleTimer: null, gameActive: true,
+  rightClickCooldown: 0
+};
+
+function getUpgradeCost(wIdx, uIdx) {
+  const u = WEAPONS[wIdx].upgrades[uIdx];
+  const lvl = state.upgradeLevels[wIdx][uIdx];
+  return Math.floor(u.baseCost * Math.pow(u.costMult, lvl) * Math.pow(1.5, state.wave - 1));
+}
+function getDamage() {
+  let d = WEAPONS[state.weaponIndex].baseDamage;
+  for(let i=0;i<3;i++) if(WEAPONS[state.weaponIndex].upgrades[i].effect==="damage") d += WEAPONS[state.weaponIndex].upgrades[i].value * state.upgradeLevels[state.weaponIndex][i];
+  return Math.floor(d * (1 + (state.wave - 1) * 0.3));
+}
+function getCritChance() {
+  let c = WEAPONS[state.weaponIndex].baseCrit;
+  for(let i=0;i<3;i++) if(WEAPONS[state.weaponIndex].upgrades[i].effect==="crit") c += WEAPONS[state.weaponIndex].upgrades[i].value * state.upgradeLevels[state.weaponIndex][i];
+  return c;
+}
+function getAutoDps() {
+  let a = 0;
+  for(let i=0;i<3;i++) if(WEAPONS[state.weaponIndex].upgrades[i].effect==="auto") a += WEAPONS[state.weaponIndex].upgrades[i].value * state.upgradeLevels[state.weaponIndex][i];
+  return a * (1 + (state.wave - 1) * 0.3);
+}
+function getNextThreshold() {
+  return state.weaponIndex < WEAPONS.length - 1 ? WEAPONS[state.weaponIndex + 1].threshold * Math.pow(2, state.wave - 1) : null;
+}
+function getPrevThreshold() {
+  return state.weaponIndex > 0 ? WEAPONS[state.weaponIndex].threshold * Math.pow(2, state.wave - 1) : 0;
+}
+
+function updateUI() {
+  state.damage = getDamage();
+  state.critChance = getCritChance();
+  state.autoDps = getAutoDps();
+
+  document.getElementById('score').textContent = formatNum(state.score);
+  document.getElementById('damage').textContent = formatNum(state.damage);
+  document.getElementById('crit-chance').textContent = state.critChance.toFixed(0);
+  document.getElementById('auto-dps').textContent = state.autoDps.toFixed(1);
+  document.getElementById('kills').textContent = state.kills;
+
+  const w = WEAPONS[state.weaponIndex];
+  document.getElementById('weapon-name').textContent = w.name;
+  document.getElementById('weapon-level').textContent = `Уровень ${state.wave} • Волна ${state.wave}`;
+  document.getElementById('damage-info').textContent = `Урон: ${formatNum(state.damage)} | Крит: ${state.critChance}%`;
+  document.getElementById('weapon-sticker').innerHTML = w.sticker;
+  document.getElementById('wave-badge').textContent = `ВОЛНА ${state.wave}`;
+  document.getElementById('player-weapon-display').innerHTML = `<div style="width:60px;height:60px;margin:0 auto;background:radial-gradient(circle,#1a2a3e,#0f1a2e);border-radius:50%;border:2px solid #4ecca3;display:flex;align-items:center;justify-content:center;">${w.sticker.replace('width="100"','width="40"').replace('height="100"','height="40"')}</div>`;
+
+  if (state.autoDps > 0) document.getElementById('auto-indicator').textContent = `🤖 Авто-урон: ${state.autoDps.toFixed(1)}/сек`;
+  else document.getElementById('auto-indicator').textContent = '';
+
+  const next = getNextThreshold();
+  const prev = getPrevThreshold();
+  if (next !== null) {
+    const progress = Math.min(100, ((state.score - prev) / (next - prev)) * 100);
+    document.getElementById('progress-fill').style.width = progress + '%';
+    document.getElementById('progress-fill').textContent = progress.toFixed(0) + '%';
+    document.getElementById('progress-label').textContent = `До "${WEAPONS[state.weaponIndex + 1].name}": ${formatNum(next - state.score)} очков`;
+  } else {
+    document.getElementById('progress-fill').style.width = '100%';
+    document.getElementById('progress-fill').textContent = 'MAX';
+    document.getElementById('progress-label').textContent = 'Максимальное оружие! Завершите волну!';
+  }
+
+  updateWeaponPath();
+  updateUpgrades();
+}
+
+function updateWeaponPath() {
+  const c = document.getElementById('weapon-path');
+  c.innerHTML = '';
+  WEAPONS.forEach((w, i) => {
+    const el = document.createElement('div');
+    el.className = 'path-item' + (i < state.weaponIndex ? ' completed' : '') + (i === state.weaponIndex ? ' active' : '');
+    el.textContent = (i < state.weaponIndex ? '✅' : i === state.weaponIndex ? '🔵' : '') + ' ' + w.name;
+    c.appendChild(el);
+  });
+}
+
+function updateUpgrades() {
+  const c = document.getElementById('upgrades-list');
+  c.innerHTML = '';
+  const w = WEAPONS[state.weaponIndex];
+  w.upgrades.forEach((u, i) => {
+    const cost = getUpgradeCost(state.weaponIndex, i);
+    const level = state.upgradeLevels[state.weaponIndex][i];
+    const btn = document.createElement('button');
+    btn.className = 'upgrade-btn';
+    btn.disabled = state.score < cost;
+    btn.innerHTML = `<div class="upg-name">${u.name} (Ур. ${level})</div><div class="upg-desc">${u.desc}</div><div class="upg-cost">💰 ${formatNum(cost)} очков</div>`;
+    btn.onclick = () => buyUpgrade(i);
+    c.appendChild(btn);
+  });
+}
+
+function formatNum(n) {
+  if (n >= 1e9) return (n/1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e4) return (n/1e3).toFixed(1) + 'K';
+  return Math.floor(n).toString();
+}
+
+function startRightClickCooldown() {
+  const btn = document.getElementById('click-btn');
+  const battleBtn = document.getElementById('battle-click-btn');
+  btn.style.filter = 'grayscale(0.7) brightness(0.8)';
+  if (battleBtn) battleBtn.style.filter = 'grayscale(0.7) brightness(0.8)';
+  
+  const interval = setInterval(() => {
+    state.rightClickCooldown--;
+    if (state.rightClickCooldown <= 0) {
+      clearInterval(interval);
+      btn.style.filter = '';
+      if (battleBtn) battleBtn.style.filter = '';
+    }
+  }, 1000);
+}
+
+function showFloatingDamage(x, y, dmg, isCrit, isRightClick = false) {
+  const el = document.createElement('div');
+  el.className = 'float-dmg' + (isCrit ? ' crit' : '') + (isRightClick ? ' right' : '');
+  if (isRightClick) {
+    el.textContent = '💥 ' + formatNum(dmg);
+  } else {
+    el.textContent = (isCrit ? '💥 КРИТ! ' : '+') + formatNum(dmg);
+  }
+  el.style.left = (x - 30 + Math.random()*60) + 'px';
+  el.style.top = (y - 20) + 'px';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+
+function spawnParticles(x, y, count) {
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = (x + Math.random()*40 - 20) + 'px';
+    p.style.top = (y + Math.random()*40 - 20) + 'px';
+    p.style.width = (4 + Math.random()*6) + 'px';
+    p.style.height = p.style.width;
+    p.style.background = ['#e94560','#ffd700','#4ecca3','#ff4444'][Math.floor(Math.random()*4)];
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 600);
+  }
+}
+
+function playerClick(event) {
+  if (state.inBattle || !state.gameActive) return;
+  event.preventDefault();
+  
+  const isRightClick = event.button === 2;
+  let dmg = state.damage;
+  let isCrit = Math.random() * 100 < state.critChance;
+  
+  if (isRightClick) {
+    if (state.rightClickCooldown > 0) {
+      showFloatingDamage(event.clientX, event.clientY, "⏳", false);
+      return;
+    }
+    isCrit = true;
+    dmg = Math.floor(dmg * 3);
+    state.rightClickCooldown = 3;
+    startRightClickCooldown();
+  } else {
+    if (isCrit) dmg = Math.floor(dmg * 2.5);
+  }
+
+  state.score += dmg;
+  state.totalScore += dmg;
+  showFloatingDamage(event.clientX, event.clientY, dmg, isCrit, isRightClick);
+  spawnParticles(event.clientX, event.clientY, isCrit ? 12 : 4);
+  document.getElementById('game-container').classList.add('shake');
+  setTimeout(() => document.getElementById('game-container').classList.remove('shake'), 150);
+  checkProgress();
+  updateUI();
+}
+
+function checkProgress() {
+  const next = getNextThreshold();
+  if (next !== null && state.score >= next) startBattle();
+}
+
+function startBattle() {
+  state.inBattle = true;
+  const enemyTemplate = ENEMIES[state.weaponIndex + 1] || ENEMIES[ENEMIES.length - 1];
+  const hpBase = WEAPONS[state.weaponIndex + 1].threshold * 0.5 * Math.pow(2, state.wave - 1);
+  const hp = Math.floor(hpBase * enemyTemplate.hpMult);
+
+  state.battleEnemy = { ...enemyTemplate, hp: hp, maxHp: hp };
+  state.battleEnemyHP = hp;
+  state.battleEnemyMaxHP = hp;
+  state.playerMaxHP = 100 + (state.wave * 40) + (state.weaponIndex * 30);
+  state.playerHP = state.playerMaxHP;
+
+  document.getElementById('battle-screen').classList.add('active');
+  document.getElementById('enemy-title').textContent = `${enemyTemplate.emoji} ${enemyTemplate.name}`;
+  document.getElementById('enemy-emoji-display').textContent = enemyTemplate.emoji;
+  document.getElementById('battle-click-btn').disabled = false;
+  updateBattleHP();
+  state.battleTimer = setInterval(enemyAttack, 1200);
+}
+
+function updateBattleHP() {
+  const pPct = Math.max(0, (state.playerHP / state.playerMaxHP) * 100);
+  const ePct = Math.max(0, (state.battleEnemyHP / state.battleEnemyMaxHP) * 100);
+  document.getElementById('player-hp-fill').style.width = pPct + '%';
+  document.getElementById('player-hp-text').textContent = `HP: ${formatNum(state.playerHP)} / ${formatNum(state.playerMaxHP)}`;
+  document.getElementById('enemy-hp-fill').style.width = ePct + '%';
+  document.getElementById('enemy-hp-text').textContent = `HP: ${formatNum(state.battleEnemyHP)} / ${formatNum(state.battleEnemyMaxHP)}`;
+}
+
+function enemyAttack() {
+  if (!state.inBattle) return;
+  const baseDmg = 8 + (state.wave * 6) + (state.weaponIndex * 5);
+  const dmg = Math.floor(baseDmg * (0.8 + Math.random() * 0.4));
+  
+  state.playerHP -= dmg;
+  if (state.playerHP < 0) state.playerHP = 0;
+  
+  document.getElementById('damage-flash').classList.add('active');
+  setTimeout(() => document.getElementById('damage-flash').classList.remove('active'), 150);
+  document.getElementById('battle-screen').classList.add('shake');
+  setTimeout(() => document.getElementById('battle-screen').classList.remove('shake'), 150);
+  
+  showFloatingDamage(window.innerWidth/2, window.innerHeight/2 - 50, dmg, false);
+  const floats = document.querySelectorAll('.float-dmg');
+  if (floats.length > 0) floats[floats.length-1].classList.add('enemy');
+  
+  updateBattleHP();
+  
+  if (state.playerHP <= 0) {
+    clearInterval(state.battleTimer);
+    state.inBattle = false;
+    document.getElementById('battle-screen').classList.remove('active');
+    document.getElementById('defeat-screen').classList.add('active');
+  }
+}
+
+function battleClick(event) {
+  if (!state.inBattle) return;
+  event.preventDefault();
+  
+  const isRightClick = event.button === 2;
+  let dmg = state.damage;
+  let isCrit = Math.random() * 100 < state.critChance;
+  
+  if (isRightClick) {
+    if (state.rightClickCooldown > 0) {
+      showFloatingDamage(event.clientX, event.clientY, "⏳", false);
+      return;
+    }
+    isCrit = true;
+    dmg = Math.floor(dmg * 3);
+    state.rightClickCooldown = 3;
+    startRightClickCooldown();
+  } else {
+    if (isCrit) dmg = Math.floor(dmg * 2.5);
+  }
+
+  state.battleEnemyHP -= dmg;
+  state.score += dmg;
+  showFloatingDamage(event.clientX, event.clientY, dmg, isCrit, isRightClick);
+  spawnParticles(event.clientX, event.clientY, isCrit ? 15 : 5);
+  document.getElementById('battle-screen').classList.add('shake');
+  setTimeout(() => document.getElementById('battle-screen').classList.remove('shake'), 150);
+  updateBattleHP();
+  updateUI();
+
+  if (state.battleEnemyHP <= 0) {
+    clearInterval(state.battleTimer);
+    winBattle();
+  }
+}
+
+function winBattle() {
+  state.inBattle = false;
+  document.getElementById('battle-screen').classList.remove('active');
+  const reward = Math.floor(state.battleEnemy.maxHp * state.battleEnemy.reward * 0.1);
+  state.score += reward;
+  state.kills++;
+
+  const victoryScreen = document.getElementById('victory-screen');
+  const isLastWeapon = state.weaponIndex >= WEAPONS.length - 1;
+
+  if (isLastWeapon) {
+    document.getElementById('victory-text').textContent = `Вы победили с ${WEAPONS[state.weaponIndex].name}!`;
+    document.getElementById('continue-btn').textContent = '🔄 НОВАЯ ВОЛНА (СЛОЖНЕЕ)';
+    document.getElementById('continue-btn').onclick = startNewWave;
+  } else {
+    state.weaponIndex++;
+    const w = WEAPONS[state.weaponIndex];
+    document.getElementById('victory-text').textContent = `Вы разблокировали: ${w.name}!`;
+    document.getElementById('continue-btn').textContent = `ВЗЯТЬ ${w.name.toUpperCase()} ➜`;
+    document.getElementById('continue-btn').onclick = continueGame;
+  }
+  document.getElementById('victory-bonus').textContent = `Бонус: +${formatNum(reward)} очков`;
+  document.getElementById('victory-sticker').innerHTML = `<div class="sticker">${WEAPONS[state.weaponIndex].sticker}</div>`;
+  victoryScreen.classList.add('active');
+  updateUI();
+}
+
+function continueGame() {
+  document.getElementById('victory-screen').classList.remove('active');
+  updateUI();
+}
+
+function startNewWave() {
+  state.wave++;
+  state.weaponIndex = 0;
+  state.score = 0;
+  state.damage = getDamage();
+  state.critChance = getCritChance();
+  state.autoDps = getAutoDps();
+  document.getElementById('victory-screen').classList.remove('active');
+  updateUI();
+}
+
+function retryBattle() {
+  document.getElementById('defeat-screen').classList.remove('active');
+  state.playerHP = Math.floor(state.playerMaxHP * 0.7);
+  state.inBattle = true;
+  state.battleEnemyHP = state.battleEnemyMaxHP;
+  document.getElementById('battle-screen').classList.add('active');
+  document.getElementById('battle-click-btn').disabled = false;
+  updateBattleHP();
+  state.battleTimer = setInterval(enemyAttack, 1200);
+}
+
+function buyUpgrade(idx) {
+  const cost = getUpgradeCost(state.weaponIndex, idx);
+  if (state.score < cost) return;
+  state.score -= cost;
+  state.upgradeLevels[state.weaponIndex][idx]++;
+  state.damage = getDamage();
+  state.critChance = getCritChance();
+  state.autoDps = getAutoDps();
+  updateUI();
+}
+
+setInterval(() => {
+  if (state.autoDps > 0 && state.gameActive && !state.inBattle) {
+    state.score += state.autoDps;
+    updateUI();
+    checkProgress();
+  }
+}, 1000);
+
+function init() {
+  state.damage = getDamage();
+  state.critChance = getCritChance();
+  state.autoDps = getAutoDps();
+  updateUI();
+}
+init();
+</script>
+</body>
+</html>
